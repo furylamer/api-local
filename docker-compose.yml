@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: odmenmoneymaker
+      POSTGRES_PASSWORD: 1tg5S56G2k14svg
+      POSTGRES_DB: neurodb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odmenmoneymaker -d neurodb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrations:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations:ro
+    command: [
+      "-database", "postgres://odmenmoneymaker:1tg5S56G2k14svg@postgres:5432/neurodb?sslmode=disable",
+      "-path", "/migrations",
+      "up"
+    ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=odmenmoneymaker
+      - DB_PASSWORD=1tg5S56G2k14svg
+      - DB_NAME=neurodb
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    restart: always
+
+volumes:
+  postgres_data:
